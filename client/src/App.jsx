@@ -6,7 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
 import { useState } from "react";
 
-const API_URL = import.meta.env.VITE_API_URL;
+// ✅ Vercel + Vite API base URL
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 function App() {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ function App() {
     e.preventDefault();
 
     axios
-      .post(`${API_URL}/`, { name, password })
+      .post(`${API_URL}/login`, { name, password })
       .then((response) => {
         if (response.data.message) {
           alert("Successfully Login");
@@ -63,7 +64,8 @@ function App() {
         } else {
           alert("Invalid email");
         }
-      });
+      })
+      .catch(() => alert("Server error"));
   }
 
   function pass(e) {
@@ -119,7 +121,6 @@ function App() {
             <center>
               <h2>Login</h2>
             </center>
-            <br />
 
             <label className="form-label" style={{ marginLeft: "15px" }}>
               Email address
@@ -132,8 +133,6 @@ function App() {
               required
             />
 
-            <br />
-
             <label className="form-label" style={{ marginLeft: "15px" }}>
               Password
             </label>
@@ -145,8 +144,6 @@ function App() {
               required
             />
 
-            <br />
-
             <center>
               <button
                 type="submit"
@@ -155,8 +152,6 @@ function App() {
                 Submit
               </button>
             </center>
-
-            <br />
 
             <p style={{ marginLeft: "15px" }}>
               Don't have an account?{" "}
@@ -174,9 +169,6 @@ function App() {
             >
               Forgot password
             </span>
-
-            <br />
-            <br />
 
             <div
               className="btn btn-primary btn-outline-dark w-100"
@@ -196,9 +188,8 @@ function App() {
         <div id="f1">
           <div id="c1">
             <center>
-              <h2 style={{ paddingTop: "30px" }}>Change Password</h2>
+              <h2>Change Password</h2>
             </center>
-            <br />
 
             <input
               type="email"
@@ -208,8 +199,6 @@ function App() {
               style={{ marginLeft: "15px", width: "370px" }}
             />
 
-            <br />
-
             <input
               type="password"
               className="form-control"
@@ -218,8 +207,6 @@ function App() {
               onChange={pass}
               style={{ marginLeft: "15px", width: "370px" }}
             />
-
-            <br />
 
             <input
               type="password"
@@ -239,7 +226,6 @@ function App() {
             <center>
               <button
                 className="btn btn-primary btn-outline-dark"
-                style={{ marginTop: "30px" }}
                 onClick={ibh}
               >
                 Submit
@@ -253,3 +239,4 @@ function App() {
 }
 
 export default App;
+
