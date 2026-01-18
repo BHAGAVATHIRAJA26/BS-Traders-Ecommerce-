@@ -4,7 +4,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL;
+// ✅ Safe defaults
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 const RAZORPAY_KEY = import.meta.env.VITE_RAZORPAY_KEY;
 
 function Card() {
@@ -18,18 +19,18 @@ function Card() {
 
   /* ================= CART ================= */
   useEffect(() => {
-    axios.post(`${API_URL}/Card`, { id }).then((res) => {
-      setA(res.data);
-    });
+    axios
+      .post(`${API_URL}/Card`, { id })
+      .then((res) => setA(res.data))
+      .catch(() => alert("Failed to load cart"));
   }, [id]);
 
   /* ================= USER INFO ================= */
   useEffect(() => {
     axios
-      .post(`${API_URL}/perinf`, id, {
-        headers: { "Content-Type": "text/plain" },
-      })
-      .then((res) => setmii(res.data));
+      .post(`${API_URL}/perinf`, { id })
+      .then((res) => setmii(res.data))
+      .catch(() => console.log("User info error"));
   }, [id]);
 
   /* ================= TOTAL CALC ================= */
@@ -52,6 +53,11 @@ function Card() {
 
   /* ================= RAZORPAY ================= */
   const payNow = async () => {
+    if (t <= 0) {
+      alert("Cart is empty");
+      return;
+    }
+
     try {
       const { data: order } = await axios.post(
         `${API_URL}/create-order`,
@@ -77,6 +83,11 @@ function Card() {
         theme: { color: "#3399cc" },
       };
 
+      if (!window.Razorpay) {
+        alert("Razorpay SDK not loaded");
+        return;
+      }
+
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch {
@@ -91,11 +102,7 @@ function Card() {
         <b id="i">BS Traders</b>
 
         <div id="a4">
-          <input
-            type="text"
-            size="60"
-            placeholder="Search for Products"
-          />
+          <input type="text" size="60" placeholder="Search for Products" />
           <i className="bi bi-search"></i>
         </div>
 
@@ -132,10 +139,7 @@ function Card() {
         <h3>No of Items: {q}</h3>
 
         <center>
-          <div
-            className="btn btn-dark btn-lg"
-            onClick={payNow}
-          >
+          <div className="btn btn-dark btn-lg" onClick={payNow}>
             Buy Now
           </div>
         </center>
@@ -145,7 +149,7 @@ function Card() {
       <div id="u1" style={{ width: "80%" }}>
         {a.map((p) => (
           <div key={p._id}>
-            <img src={p.url} height="280" width="370" />
+            <img src={p.url} height="280" width="370" alt="product" />
 
             <b>{p.desc}</b>
             <p>
@@ -153,12 +157,9 @@ function Card() {
               <s>₹{p.cos}</s> ({p.dis}% OFF)
             </p>
 
-            <button onClick={(e) => ho(e, p.dis, p.cos)}>
-              Add
-            </button>
-            <button onClick={(e) => hoo(e, p.dis, p.cos)}>
-              Remove
-            </button>
+            <button onClick={(e) => ho(e, p.dis, p.cos)}>Add</button>
+            <button onClick={(e) => hoo(e, p.dis, p.cos)}>Remove</button>
+
             <button
               className="btn btn-danger"
               onClick={() => remov(p._id)}
@@ -175,3 +176,4 @@ function Card() {
 }
 
 export default Card;
+
