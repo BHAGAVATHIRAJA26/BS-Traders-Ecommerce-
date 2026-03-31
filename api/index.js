@@ -75,7 +75,7 @@ router.post("/google-login", async (req, res) => {
             return res.status(401).json({ message: false, error: "Email not registered" });
         }
         res.json({ message: true, id: user._id });
-    } catch (err)) {
+    } catch (err) {
         res.status(500).json({ message: false });
     }
 });
