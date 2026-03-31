@@ -14,8 +14,11 @@ const { Users, Products,tdata } = require('./mongodb.js');
 const multer = require('multer');
 const app=express()
 const path=require('path')
-const port=3500;
-app.use(cors());
+const port = process.env.PORT || 3500;
+app.use(cors({
+    origin: process.env.FRONTEND_URL || "https://aaa-gyzd.vercel.app", 
+    credentials: true
+}));
 app.use(express.text());
 
 //
@@ -33,17 +36,16 @@ app.use(express.urlencoded({ extended: true }));
 
 // razorpay
 const razorpay = new Razorpay({
-  key_id: "rzp_test_Rav7PqqDQLc4Wd",
-  key_secret: "eJ9At1SCU94OqHwPQQQ6cLCa"
-,
+  key_id: process.env.RAZORPAY_KEY_ID || "rzp_test_Rav7PqqDQLc4Wd",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "eJ9At1SCU94OqHwPQQQ6cLCa",
 });
 
 
 //
 cloudinary.config({
-  cloud_name:"dzu51wvvf",
-  api_key:"731871515934731",
-  api_secret:"gtnlnf0RrNQkf2jfNg0FpCeqeCw",
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dzu51wvvf",
+  api_key: process.env.CLOUDINARY_API_KEY || "731871515934731",
+  api_secret: process.env.CLOUDINARY_API_SECRET || "gtnlnf0RrNQkf2jfNg0FpCeqeCw",
 });
 
 app.post('/',(req,res)=>{
@@ -51,7 +53,7 @@ app.post('/',(req,res)=>{
     console.log(name,password)
     main().catch(err=>console.log(err));
         async function main(){
-            await mongoose.connect('mongodb://127.0.0.1:27017/testdb')
+            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
             d=await y.Users.findOne({useremail:name,password:password}) 
          
     if(d!==null){
@@ -72,7 +74,7 @@ app.post("/google-login", async (req, res) => {
   const { email } = req.body;
 
   try {
-    await mongoose.connect("mongodb://127.0.0.1:27017/testdb");
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
 
     const user = await Users.findOne({ useremail: email });
 
@@ -137,7 +139,7 @@ app.post('/newreg', async (req, res) => {
   console.log(name, email, t1, gender, phone, aphone, address);
 
   async function main() {
-    await mongoose.connect('mongodb://127.0.0.1:27017/testdb');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
 
     const existingUser = await y.Users.findOne({ useremail: email });
 
@@ -169,7 +171,7 @@ app.get('/product',(req,res)=>{
   
     main().catch(err=>console.log(err));
         async function main(){
-            await mongoose.connect('mongodb://127.0.0.1:27017/testdb')
+            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
             const d=await y.Products.find()
         
     res.json(d)}
@@ -179,7 +181,7 @@ app.post('/perinf',(req,res)=>{
     id= req.body;
       main().catch(err=>console.log(err));
         async function main(){
-            await mongoose.connect('mongodb://127.0.0.1:27017/testdb')
+            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
             const d=await y.Users.findById({_id:id})
     console.log(d)
     res.json(d);}
@@ -190,7 +192,7 @@ app.post('/product',(req,res)=>{
     console.log(two)
     main().catch(err=>console.log(err));
         async function main(){
-            await mongoose.connect('mongodb://127.0.0.1:27017/testdb')
+            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
             const d=await y.Products.find({desc: { $regex: two, $options: 'i' }})
             console.log(two);
         
@@ -202,7 +204,7 @@ app.post("/Card", async (req, res) => {
   try {
     const { id } = req.body; // ✅ correct
 
-    await mongoose.connect("mongodb://127.0.0.1:27017/testdb");
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
 
     // get all cart items for this user
     const d = await y.tdata.find({ uid: id });
@@ -220,7 +222,7 @@ app.post("/Card", async (req, res) => {
 app.post("/passch",async (req,res) =>{
     const { name,newpassword } = req.body; // ✅ correct
 try {
-    await mongoose.connect("mongodb://127.0.0.1:27017/testdb");
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
 
     const user = await Users.findOne({ useremail: name });
 
@@ -247,7 +249,7 @@ app.post("/Cardre",async (req,res) =>{
     try {
     const { id } = req.body; // ✅ correct
 
-    await mongoose.connect("mongodb://127.0.0.1:27017/testdb");
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
 
     // get all cart items for this user
     await y.tdata.deleteOne({ _id: id });
@@ -269,7 +271,7 @@ app.get('/product/:id',(req,res)=>{
     const id =req.params.id;
      main().catch(err=>console.log(err));
         async function main(){
-            await mongoose.connect('mongodb://127.0.0.1:27017/testdb')
+            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
             const d=await y.Products.findById({_id:id})
 
     res.json(d);}
@@ -280,7 +282,7 @@ app.get('/product/:id',(req,res)=>{
 
 
 app.post("/Sell", upload.single("img"), async (req, res) => {
-    await mongoose.connect('mongodb://127.0.0.1:27017/testdb')
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
   try {
     const { desc, cos, dis, nop, mob } = req.body;
 
@@ -325,7 +327,7 @@ app.post("/itdata",async (req,res)=>{
 
     try { 
     const{id,url,desc,cos,dis}=req.body;
-    await mongoose.connect('mongodb://127.0.0.1:27017/testdb');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
     const f=await y.tdata.create({uid:id,url,desc,cos,dis})
   return res.json({ message: true });
   } catch (err) {
@@ -362,7 +364,7 @@ app.post("/verify-payment", (req, res) => {
   const body = razorpay_order_id + "|" + razorpay_payment_id;
 
   const expectedSignature = crypto
-    .createHmac("sha256", "eJ9At1SCU94OqHwPQQQ6cLCa")
+    .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "eJ9At1SCU94OqHwPQQQ6cLCa")
     .update(body)
     .digest("hex");
 
