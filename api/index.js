@@ -50,7 +50,10 @@ app.use(async (req, res, next) => {
     next();
 });
 
-app.post('/api/', async (req, res) => {
+// Routes - adjusted to be relative (works for Vercel /api/ handler)
+const router = express.Router();
+
+router.post('/', async (req, res) => {
     const { name, password } = req.body;
     try {
         const d = await Users.findOne({ useremail: name, password: password });
@@ -64,7 +67,7 @@ app.post('/api/', async (req, res) => {
     }
 });
 
-app.post("/api/google-login", async (req, res) => {
+router.post("/google-login", async (req, res) => {
     const { email } = req.body;
     try {
         const user = await Users.findOne({ useremail: email });
@@ -72,12 +75,12 @@ app.post("/api/google-login", async (req, res) => {
             return res.status(401).json({ message: false, error: "Email not registered" });
         }
         res.json({ message: true, id: user._id });
-    } catch (err) {
+    } catch (err)) {
         res.status(500).json({ message: false });
     }
 });
 
-app.post("/api/get-address", async (req, res) => {
+router.post("/get-address", async (req, res) => {
     try {
         const { latitude, longitude } = req.body;
         if (!latitude || !longitude) {
@@ -100,7 +103,7 @@ app.post("/api/get-address", async (req, res) => {
     }
 });
 
-app.post('/api/newreg', async (req, res) => {
+router.post('/newreg', async (req, res) => {
     const { name, email, t1, gender, phone, aphone, address } = req.body;
     try {
         const existingUser = await Users.findOne({ useremail: email });
@@ -115,7 +118,7 @@ app.post('/api/newreg', async (req, res) => {
     }
 });
 
-app.get('/api/product', async (req, res) => {
+router.get('/product', async (req, res) => {
     try {
         const d = await Products.find();
         res.json(d);
@@ -124,7 +127,7 @@ app.get('/api/product', async (req, res) => {
     }
 });
 
-app.post('/api/perinf', async (req, res) => {
+router.post('/perinf', async (req, res) => {
     const id = req.body;
     try {
         const d = await Users.findById(id);
@@ -134,7 +137,7 @@ app.post('/api/perinf', async (req, res) => {
     }
 });
 
-app.post('/api/product', async (req, res) => {
+router.post('/product', async (req, res) => {
     const two = req.body;
     try {
         const d = await Products.find({ desc: { $regex: two, $options: 'i' } });
@@ -144,7 +147,7 @@ app.post('/api/product', async (req, res) => {
     }
 });
 
-app.post("/api/Card", async (req, res) => {
+router.post("/Card", async (req, res) => {
     try {
         const { id } = req.body;
         const d = await tdata.find({ uid: id });
@@ -154,7 +157,7 @@ app.post("/api/Card", async (req, res) => {
     }
 });
 
-app.post("/api/passch", async (req, res) => {
+router.post("/passch", async (req, res) => {
     const { name, newpassword } = req.body;
     try {
         const user = await Users.findOne({ useremail: name });
@@ -167,7 +170,7 @@ app.post("/api/passch", async (req, res) => {
     }
 });
 
-app.post("/api/Cardre", async (req, res) => {
+router.post("/Cardre", async (req, res) => {
     try {
         const { id } = req.body;
         await tdata.deleteOne({ _id: id });
@@ -177,7 +180,7 @@ app.post("/api/Cardre", async (req, res) => {
     }
 });
 
-app.get('/api/product/:id', async (req, res) => {
+router.get('/product/:id', async (req, res) => {
     const id = req.params.id;
     try {
         const d = await Products.findById(id);
@@ -187,7 +190,7 @@ app.get('/api/product/:id', async (req, res) => {
     }
 });
 
-app.post("/api/Sell", upload.single("img"), async (req, res) => {
+router.post("/Sell", upload.single("img"), async (req, res) => {
     try {
         const { desc, cos, dis, nop, mob } = req.body;
         const streamUpload = (fileBuffer) => {
@@ -213,7 +216,7 @@ app.post("/api/Sell", upload.single("img"), async (req, res) => {
     }
 });
 
-app.post("/api/itdata", async (req, res) => {
+router.post("/itdata", async (req, res) => {
     try {
         const { id, url, desc, cos, dis } = req.body;
         await tdata.create({ uid: id, url, desc, cos, dis });
@@ -223,7 +226,7 @@ app.post("/api/itdata", async (req, res) => {
     }
 });
 
-app.post("/api/create-order", async (req, res) => {
+router.post("/create-order", async (req, res) => {
     try {
         const { amount } = req.body;
         const order = await razorpay.orders.create({
@@ -237,7 +240,7 @@ app.post("/api/create-order", async (req, res) => {
     }
 });
 
-app.post("/api/verify-payment", (req, res) => {
+router.post("/verify-payment", (req, res) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
@@ -250,6 +253,10 @@ app.post("/api/verify-payment", (req, res) => {
         res.status(400).json({ success: false, message: "Invalid Signature" });
     }
 });
+
+// Use the router for both /api and root as a safety measure
+app.use('/api', router);
+app.use('/', router);
 
 // Export the app for Vercel
 module.exports = app;
