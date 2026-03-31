@@ -1,11 +1,20 @@
 {
+  "name": "e-commerce",
+  "version": "1.0.0",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js",
+    "dev": "nodemon api/index.js",
+    "build": "cd reactapp && npm install && npm run build"
+  },
   "dependencies": {
+    "axios": "^1.11.0",
     "cloudinary": "^2.7.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "mongoose": "^8.18.0",
-    "react-router-dom": "^7.8.1",
-    "reactjs-social-login": "^2.6.3"
+    "multer": "^1.4.5-lts.1",
+    "razorpay": "^2.9.6"
   }
 }
