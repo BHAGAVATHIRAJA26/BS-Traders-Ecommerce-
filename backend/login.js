@@ -21,8 +21,6 @@ app.use(cors({
     origin: function (origin, callback) {
         // allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        
-        // Allow any domain for maximum compatibility during testing
         return callback(null, true);
     },
     credentials: true,
@@ -35,12 +33,12 @@ app.options('*', cors());
 
 // Health check route
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: "UP", timestamp: new Date() });
+    res.status(200).json({ status: "UP", timestamp: new Date(), db: mongoose.connection.readyState });
 });
 
 // Root check
 app.get('/', (req, res) => {
-    res.send("Backend is running smoothly. API is active.");
+    res.send("Backend is running. Environment: " + (process.env.NODE_ENV || "production"));
 });
 
 // Middleware
@@ -63,13 +61,18 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET || "gtnlnf0RrNQkf2jfNg0FpCeqeCw",
 });
 
-// Establish MongoDB connection once at startup for efficiency
+// Connect once at startup
 const connectDB = async () => {
+    if (mongoose.connection.readyState !== 0) return;
     try {
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-        console.log("MongoDB Connected Successfully");
+        if (!process.env.MONGODB_URI) {
+            console.error("CRITICAL: MONGODB_URI is not defined.");
+            return;
+        }
+        await mongoose.connect(process.env.MONGODB_URI);
+        console.log("Connected to MongoDB at " + process.env.MONGODB_URI.substring(0, 20) + "...");
     } catch (err) {
-        console.error("MongoDB Connection Error:", err.message);
+        console.error("MongoDB error:", err.message);
     }
 };
 connectDB();
@@ -78,6 +81,7 @@ connectDB();
 app.post('/', async (req,res)=>{
     const {name,password}=req.body;
     try {
+        await connectDB();
         const d = await Users.findOne({useremail:name, password:password});
         if(d){
             res.json({ message: true, id: d._id});
@@ -85,46 +89,21 @@ app.post('/', async (req,res)=>{
             res.json({ message: false, id: 0});
         }
     } catch(err) {
-        res.status(500).json({ message: false, error: err.message });
+        res.status(500).json({ message: "Login Error", error: err.message });
     }
 });
 
 app.post("/google-login", async (req, res) => {
   const { email } = req.body;
   try {
+    await connectDB();
     const user = await Users.findOne({ useremail: email });
     if (!user) {
       return res.status(401).json({ message: false, error: "Email not registered" });
     }
     res.json({ message: true, id: user._id });
   } catch (err) {
-    res.status(500).json({ message: false, error: err.message });
-  }
-});
-
-app.post("/get-address", async (req, res) => {
-  try {
-    const { latitude, longitude } = req.body;
-    if (!latitude || !longitude) {
-      return res.status(400).json({ message: "Latitude and Longitude required" });
-    }
-    const response = await axios.get(
-      "https://nominatim.openstreetmap.org/reverse",
-      {
-        params: { format: "json", lat: latitude, lon: longitude },
-        headers: { "User-Agent": "MyApp/1.0" }
-      }
-    );
-    const address = response.data.address;
-    res.json({
-      country: address.country || "",
-      state: address.state || "",
-      district: address.county || address.state_district || "",
-      city: address.city || address.town || address.village || "",
-      area: address.suburb || address.neighbourhood || ""
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch address", error: error.message });
+    res.status(500).json({ message: "Google Login Error", error: err.message });
   }
 });
 
@@ -132,11 +111,12 @@ app.post('/newreg', async (req, res) => {
   const { name, email, t1, gender, phone, aphone, address } = req.body;
   try {
     if (!name || !email) {
-      return res.json({ message: false, error: "Name and email required" });
+      return res.json({ message: false, error: "Missing name or email" });
     }
+    await connectDB();
     const existingUser = await Users.findOne({ useremail: email });
     if (existingUser || name.length <= 0 || email.length <= 0) {
-      return res.json({ message: false }); 
+      return res.json({ message: false, error: "User already exists or inputs invalid" }); 
     } else {
       const d = await Users.create({
         username: name,
@@ -151,12 +131,13 @@ app.post('/newreg', async (req, res) => {
     }
   } catch (err) {
     console.error("NewReg Error:", err);
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: "Registration Error", error: err.message });
   }
 });
 
 app.get('/product', async (req,res)=>{
     try {
+        await connectDB();
         const d = await Products.find();
         res.json(d);
     } catch(err) {
@@ -167,6 +148,7 @@ app.get('/product', async (req,res)=>{
 app.post('/perinf', async (req,res)=>{
     const id = req.body;
     try {
+        await connectDB();
         const d = await Users.findById(id);
         res.json(d);
     } catch(err) {
@@ -177,6 +159,7 @@ app.post('/perinf', async (req,res)=>{
 app.post('/product', async (req,res)=>{
     const search = req.body;
     try {
+        await connectDB();
         const d = await Products.find({desc: { $regex: search, $options: 'i' }});
         res.json(d);
     } catch(err) {
@@ -185,43 +168,45 @@ app.post('/product', async (req,res)=>{
 });
 
 app.post("/Card", async (req, res) => {
+  const { id } = req.body;
   try {
-    const { id } = req.body;
+    await connectDB();
     const d = await tdata.find({ uid: id });
     res.json(d);
   } catch (err) {
-    res.status(500).json({ message: false, error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
 app.post("/passch", async (req,res) =>{
     const { name, newpassword } = req.body;
     try {
+        await connectDB();
         const user = await Users.findOne({ useremail: name });
-        if (!user) {
-          return res.status(404).json({ message: false });
-        }
+        if (!user) return res.status(404).json({ message: false });
         user.password = newpassword;
         await user.save();
         res.json({ message: true });
     } catch (err) {
-        res.status(500).json({ message: false, error: err.message });
+        res.status(500).json({ message: "PassCh Error", error: err.message });
     }
 });
 
 app.post("/Cardre", async (req,res) =>{
+    const { id } = req.body;
     try {
-        const { id } = req.body;
+        await connectDB();
         await tdata.deleteOne({ _id: id });
         res.json({ message: true });
     } catch (err) {
-        res.status(500).json({ message: false, error: err.message });
+        res.status(500).json({ error: err.message });
     }
 });
 
 app.get('/product/:id', async (req,res)=>{
     const id = req.params.id;
     try {
+        await connectDB();
         const d = await Products.findById(id);
         res.json(d);
     } catch(err) {
@@ -230,8 +215,9 @@ app.get('/product/:id', async (req,res)=>{
 });
 
 app.post("/Sell", upload.single("img"), async (req, res) => {
+  const { desc, cos, dis, nop, mob } = req.body;
   try {
-    const { desc, cos, dis, nop, mob } = req.body;
+    await connectDB();
     const streamUpload = (fileBuffer) => {
       return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream({ folder: "uploads" }, (error, result) => {
@@ -243,29 +229,24 @@ app.post("/Sell", upload.single("img"), async (req, res) => {
     };
     const result = await streamUpload(req.file.buffer);
     const product = new Products({
-      name: result.original_filename,
-      url: result.secure_url,
-      public_id: result.public_id,
-      desc,
-      cos,
-      dis,
-      nop,
-      mob,
+      name: result.original_filename, url: result.secure_url, public_id: result.public_id,
+      desc, cos, dis, nop, mob,
     });
     await product.save();
     res.json({ message: true });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: "Sell Error", error: err.message });
   }
 });
 
 app.post("/itdata", async (req,res)=>{
+    const {id, url, desc, cos, dis} = req.body;
     try { 
-        const {id, url, desc, cos, dis} = req.body;
+        await connectDB();
         await tdata.create({uid:id, url, desc, cos, dis});
         return res.json({ message: true });
     } catch (err) {
-        return res.status(500).json({ message: false, error: err.message });
+        return res.status(500).json({ error: err.message });
     }
 });
 
@@ -288,10 +269,9 @@ app.post("/verify-payment", (req, res) => {
   const body = razorpay_order_id + "|" + razorpay_payment_id;
   const expectedSignature = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "eJ9At1SCU94OqHwPQQQ6cLCa")
-    .update(body)
-    .digest("hex");
+    .update(body).digest("hex");
   if (expectedSignature === razorpay_signature) {
-    res.json({ success: true, message: "Payment Verified, Order will be received soon"});
+    res.json({ success: true, message: "Payment Verified"});
   } else {
     res.status(400).json({ success: false, message: "Invalid Signature" });
   }

@@ -2,9 +2,9 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "E-commerce Backend Service",
-  "main": "index.js",
+  "main": "login.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node login.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "echo \"No build script needed\""
   },

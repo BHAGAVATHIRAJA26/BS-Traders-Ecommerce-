@@ -2,9 +2,9 @@
   "name": "bs-traders-ecommerce-root",
   "version": "1.0.0",
   "description": "Root package for e-commerce project deployment",
-  "main": "backend/index.js",
+  "main": "backend/login.js",
   "scripts": {
-    "start": "node backend/index.js",
+    "start": "node backend/login.js",
     "build": "cd backend && npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
