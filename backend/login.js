@@ -16,7 +16,7 @@ const app=express()
 const path=require('path')
 const port = process.env.PORT || 3500;
 app.use(cors({
-    origin: process.env.FRONTEND_URL || "https://aaa-gyzd.vercel.app", 
+    origin: ["https://aaa-lyzp.vercel.app", "http://localhost:5173", "http://localhost:3000"],
     credentials: true
 }));
 app.use(express.text());
