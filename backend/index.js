@@ -22,8 +22,7 @@ app.use(cors({
         // allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         
-        // Allow any vercel.app domain, localhost, or any other origin for maximum compatibility
-        // This satisfies the "Enable CORS for all frontend domains" requirement
+        // Allow any domain for maximum compatibility during testing
         return callback(null, true);
     },
     credentials: true,
@@ -37,6 +36,11 @@ app.options('*', cors());
 // Health check route
 app.get('/health', (req, res) => {
     res.status(200).json({ status: "UP", timestamp: new Date() });
+});
+
+// Root check
+app.get('/', (req, res) => {
+    res.send("Backend is running smoothly. API is active.");
 });
 
 // Middleware
@@ -59,45 +63,42 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET || "gtnlnf0RrNQkf2jfNg0FpCeqeCw",
 });
 
-// Routes
-app.post('/',(req,res)=>{
-    const {name,password}=req.body;
-    console.log(name,password)
-    main().catch(err=>console.log(err));
-        async function main(){
-            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-            const d=await y.Users.findOne({useremail:name,password:password}) 
-         
-    if(d!==null){
-            res.json({ message: true,id: d._id});
-        }
-    else{
-            console.log("it is not found")
-            res.json({ message: false,id: 0});
-    }}
-})
+// Establish MongoDB connection once at startup for efficiency
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
+        console.log("MongoDB Connected Successfully");
+    } catch (err) {
+        console.error("MongoDB Connection Error:", err.message);
+    }
+};
+connectDB();
 
-app.get('/', (req, res) => {
-    res.send("Backend is running smoothly. Use /health for status.");
+// Routes
+app.post('/', async (req,res)=>{
+    const {name,password}=req.body;
+    try {
+        const d = await Users.findOne({useremail:name, password:password});
+        if(d){
+            res.json({ message: true, id: d._id});
+        } else {
+            res.json({ message: false, id: 0});
+        }
+    } catch(err) {
+        res.status(500).json({ message: false, error: err.message });
+    }
 });
 
 app.post("/google-login", async (req, res) => {
   const { email } = req.body;
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
     const user = await Users.findOne({ useremail: email });
     if (!user) {
-      return res.status(401).json({
-        message: false,
-        error: "Email not registered"
-      });
+      return res.status(401).json({ message: false, error: "Email not registered" });
     }
-    res.json({
-      message: true,
-      id: user._id
-    });
+    res.json({ message: true, id: user._id });
   } catch (err) {
-    res.status(500).json({ message: false });
+    res.status(500).json({ message: false, error: err.message });
   }
 });
 
@@ -110,14 +111,8 @@ app.post("/get-address", async (req, res) => {
     const response = await axios.get(
       "https://nominatim.openstreetmap.org/reverse",
       {
-        params: {
-          format: "json",
-          lat: latitude,
-          lon: longitude
-        },
-        headers: {
-          "User-Agent": "MyApp/1.0"
-        }
+        params: { format: "json", lat: latitude, lon: longitude },
+        headers: { "User-Agent": "MyApp/1.0" }
       }
     );
     const address = response.data.address;
@@ -129,21 +124,21 @@ app.post("/get-address", async (req, res) => {
       area: address.suburb || address.neighbourhood || ""
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to fetch address" });
+    res.status(500).json({ message: "Failed to fetch address", error: error.message });
   }
 });
 
 app.post('/newreg', async (req, res) => {
   const { name, email, t1, gender, phone, aphone, address } = req.body;
-  console.log(name, email, t1, gender, phone, aphone, address);
-  async function main() {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-    const existingUser = await y.Users.findOne({ useremail: email });
+  try {
+    if (!name || !email) {
+      return res.json({ message: false, error: "Name and email required" });
+    }
+    const existingUser = await Users.findOne({ useremail: email });
     if (existingUser || name.length <= 0 || email.length <= 0) {
       return res.json({ message: false }); 
     } else {
-      const d = await y.Users.create({
+      const d = await Users.create({
         username: name,
         useremail: email,
         password: t1,
@@ -152,93 +147,89 @@ app.post('/newreg', async (req, res) => {
         aphone,
         address
       });
-      console.log(d);
       return res.json({ message: true });
     }
+  } catch (err) {
+    console.error("NewReg Error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
   }
-  main().catch(err => {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  });
 });
 
-app.get('/product',(req,res)=>{
-    main().catch(err=>console.log(err));
-        async function main(){
-            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-            const d=await y.Products.find()
-    res.json(d)}
+app.get('/product', async (req,res)=>{
+    try {
+        const d = await Products.find();
+        res.json(d);
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-app.post('/perinf',(req,res)=>{
-    const id= req.body;
-      main().catch(err=>console.log(err));
-        async function main(){
-            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-            const d=await y.Users.findById({_id:id})
-    res.json(d);}
+app.post('/perinf', async (req,res)=>{
+    const id = req.body;
+    try {
+        const d = await Users.findById(id);
+        res.json(d);
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-app.post('/product',(req,res)=>{
-    const two=req.body;
-    main().catch(err=>console.log(err));
-        async function main(){
-            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-            const d=await y.Products.find({desc: { $regex: two, $options: 'i' }})
-    res.json(d)}
+app.post('/product', async (req,res)=>{
+    const search = req.body;
+    try {
+        const d = await Products.find({desc: { $regex: search, $options: 'i' }});
+        res.json(d);
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post("/Card", async (req, res) => {
   try {
     const { id } = req.body;
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-    const d = await y.tdata.find({ uid: id });
+    const d = await tdata.find({ uid: id });
     res.json(d);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: false });
+    res.status(500).json({ message: false, error: err.message });
   }
 });
 
-app.post("/passch",async (req,res) =>{
-    const { name,newpassword } = req.body;
-try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-    const user = await Users.findOne({ useremail: name });
-    if (!user) {
-      return res.status(404).json({ message: false });
-    }
-    user.password = newpassword;
-    await user.save();
-    res.json({ message: true });
-  } catch (err) {
-    res.status(500).json({ message: false });
-  }
-});
-
-app.post("/Cardre",async (req,res) =>{
+app.post("/passch", async (req,res) =>{
+    const { name, newpassword } = req.body;
     try {
-    const { id } = req.body;
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-    await y.tdata.deleteOne({ _id: id });
-    res.json({ message: true });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: false });
-  }
+        const user = await Users.findOne({ useremail: name });
+        if (!user) {
+          return res.status(404).json({ message: false });
+        }
+        user.password = newpassword;
+        await user.save();
+        res.json({ message: true });
+    } catch (err) {
+        res.status(500).json({ message: false, error: err.message });
+    }
 });
 
-app.get('/product/:id',(req,res)=>{
-    const id =req.params.id;
-     main().catch(err=>console.log(err));
-        async function main(){
-            await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-            const d=await y.Products.findById({_id:id})
-    res.json(d);}
+app.post("/Cardre", async (req,res) =>{
+    try {
+        const { id } = req.body;
+        await tdata.deleteOne({ _id: id });
+        res.json({ message: true });
+    } catch (err) {
+        res.status(500).json({ message: false, error: err.message });
+    }
+});
+
+app.get('/product/:id', async (req,res)=>{
+    const id = req.params.id;
+    try {
+        const d = await Products.findById(id);
+        res.json(d);
+    } catch(err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post("/Sell", upload.single("img"), async (req, res) => {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
   try {
     const { desc, cos, dis, nop, mob } = req.body;
     const streamUpload = (fileBuffer) => {
@@ -264,21 +255,18 @@ app.post("/Sell", upload.single("img"), async (req, res) => {
     await product.save();
     res.json({ message: true });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
-app.post("/itdata",async (req,res)=>{
+app.post("/itdata", async (req,res)=>{
     try { 
-    const{id,url,desc,cos,dis}=req.body;
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/testdb');
-    await y.tdata.create({uid:id,url,desc,cos,dis})
-  return res.json({ message: true });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: false });
-  }
+        const {id, url, desc, cos, dis} = req.body;
+        await tdata.create({uid:id, url, desc, cos, dis});
+        return res.json({ message: true });
+    } catch (err) {
+        return res.status(500).json({ message: false, error: err.message });
+    }
 });
 
 app.post("/create-order", async (req, res) => {
@@ -296,18 +284,14 @@ app.post("/create-order", async (req, res) => {
 });
 
 app.post("/verify-payment", (req, res) => {
-  const {
-    razorpay_order_id,
-    razorpay_payment_id,
-    razorpay_signature,
-  } = req.body;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
   const body = razorpay_order_id + "|" + razorpay_payment_id;
   const expectedSignature = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "eJ9At1SCU94OqHwPQQQ6cLCa")
     .update(body)
     .digest("hex");
   if (expectedSignature === razorpay_signature) {
-    res.json({ success: true, message: "Payment Verified,Order will received soon"});
+    res.json({ success: true, message: "Payment Verified, Order will be received soon"});
   } else {
     res.status(400).json({ success: false, message: "Invalid Signature" });
   }
