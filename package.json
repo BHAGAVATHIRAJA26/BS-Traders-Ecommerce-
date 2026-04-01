@@ -1,0 +1,14 @@
+{
+  "name": "bs-traders-ecommerce-root",
+  "version": "1.0.0",
+  "description": "Root package for e-commerce project deployment",
+  "main": "backend/index.js",
+  "scripts": {
+    "start": "node backend/index.js",
+    "build": "cd backend && npm install",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
